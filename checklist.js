@@ -1,6 +1,5 @@
 $(document).ready(function() {
 
-
     // GLOBAL DATA ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     let grandTotal = 0;
@@ -146,7 +145,6 @@ $(document).ready(function() {
 
     }
 
-
     // EVENTS //////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     // On document load //////////////////////////////////
@@ -206,8 +204,7 @@ $(document).ready(function() {
             });
         }
 
-
-    // On check item click ///////////////////////////////
+    // On "Check item" click //////////////////////////////////
 
         // Update localstorage on checked box interactions
         $("[ck-item]").on("click", function(){
@@ -224,7 +221,7 @@ $(document).ready(function() {
             }, 100);
         });
 
-    // On "Share link" item click ///////////////////////////////
+    // On "Share link" btn click ///////////////////////////////
 
         // Clipboard logic
         const clipboard = new ClipboardJS("#share-link-btn", {
@@ -244,13 +241,14 @@ $(document).ready(function() {
             console.log(e);
         });
 
-    // On "Reset progress" item click ////////////////////////////
-    $("#reset-progress-btn").on("click", function(){
-        const confirmDelete = confirm("Reset all checklist task progress? Warning: This can't be undone.");
-        if (confirmDelete){
-            updateLocalStorageData({}, {});
-            location.reload();
-        }
-    });
+    // On "Reset progress" btn click ////////////////////////////
+
+        $("#reset-progress-btn").on("click", function(){
+            const confirmDelete = confirm("Reset all checklist task progress? Warning: This can't be undone.");
+            if (confirmDelete){
+                updateLocalStorageData({}, {});
+                location.reload();
+            }
+        });
 
 });
