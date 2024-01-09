@@ -174,6 +174,8 @@ $(document).ready(function() {
             if (paramJSON != null){
                 // set localstorage data, sourced from query param
                 updateLocalStorageData({}, paramJSON);
+                // remove query params -> to avoid a refresh that overrides the new progress with the old params object
+                location.replace(location.pathname);
             }
         }
 
@@ -222,7 +224,7 @@ $(document).ready(function() {
             }, 100);
         });
 
-    // On "share link" item click ///////////////////////////////
+    // On "Share link" item click ///////////////////////////////
 
         // Clipboard logic
         const clipboard = new ClipboardJS("#share-link-btn", {
@@ -241,5 +243,14 @@ $(document).ready(function() {
         clipboard.on("error", function (e) {
             console.log(e);
         });
+
+    // On "Reset progress" item click ////////////////////////////
+    $("#reset-progress-btn").on("click", function(){
+        const confirmDelete = confirm("Reset all checklist task progress? Warning: This can't be undone.");
+        if (confirmDelete){
+            updateLocalStorageData({}, {});
+            location.reload();
+        }
+    });
 
 });
