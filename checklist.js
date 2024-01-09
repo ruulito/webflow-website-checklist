@@ -1,8 +1,15 @@
 $(document).ready(function() {
 
+
+    // GLOBAL DATA ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    let grandTotal = 0;
+    let grandCount = 0;
+
     // REUSABLE FUNCTIONS ////////////////////////////////////////////////////////////////////////////////////////////
 
     function isItemChecked($ckItemEl){ // Make sure to pass [ck-item] element as a JQuery object
+
         let output = false;
         if ($ckItemEl.find(".w-checkbox-input").hasClass("w--redirected-checked")){
             output = true;
@@ -11,10 +18,12 @@ $(document).ready(function() {
     }
 
     function makeItemChecked($ckItemEl){ // Make sure to pass [ck-item] element as a JQuery object
+
         $ckItemEl.find(".w-checkbox-input").addClass("w--redirected-checked");
     }
 
     function getPageItems(){
+
         let output = false;
         let ckItems = $("[ck-items='crawl']");
         if(ckItems != null){
@@ -28,6 +37,7 @@ $(document).ready(function() {
     }
 
     function getPageParentID(){
+
         let ckParent = $("[ck-parent]");
         if (ckParent != null){
             ckParent = ckParent.attr("ck-parent")
@@ -67,56 +77,118 @@ $(document).ready(function() {
     }
 
     function getLocalStorageData(){
+
         let output;
         let localStorageProgressData = localStorage.getItem("checklist_progress_data");
         if (localStorageProgressData){
             output = JSON.parse(localStorageProgressData);
+        }else{
+            output = {}
         }
         return output;
     }  
 
     function updateLocalStorageData(sourceObject, appendObject){
+
         Object.assign(sourceObject, appendObject);
         localStorage.setItem("checklist_progress_data", JSON.stringify(sourceObject));
     }
 
-    function updateNavItemCount(){
+    function updateNavItemCount(navItemID, value){
 
+        let $navItem = $("[ck-nav-item='" + navItemID + "']");
+        if($navItem){
+            $navItem.find(".checks-progress_tracker .checks-progress_counter").text(value);            
+        }
     }
 
-    // EVENTS //////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    // On document load //////////////////////////////////
+    function updateAllNavCounts(object){
 
-        // Get localstorage object
-        let localJSON = getLocalStorageData();
-        if(!localJSON){
-            localJSON = {};
-        }
-        console.log(localJSON);
+        $.each( object, function( k, v ) {
 
-        // Populate left navigation with all checked items
-        $.each( localJSON, function( k, v ) {
-            let $navItem = $("[ck-nav-item='" + k + "']");
-            let total = 0;
             let count = 0;
             $.each( v, function( ik, iv ) {
                 if(iv.checked == true){
                     count++;
                 }
-                total++;
             });
+            // Add count to grand count
+            grandCount = grandCount + count;
+            // Add count to nav item -> if top of count, show icon
+            updateNavItemCount(k, count);
+            // Show completed icon if reached total
+            let $thisNavItem = $("[ck-nav-item='" + k + "']")
+            let thisTotal = $thisNavItem.find(".checks-progress_tracker .checks-progress_total").text();
+            
+            if (count == thisTotal){
+                $thisNavItem.addClass("completed");
+            }else{
+                $thisNavItem.removeClass("completed");
+            }
+        });
+    }
 
-            // Add count -> if top of count, show icon
-            $navItem.find(".checks-progress_tracker .checks-progress_counter").text(count);
-            $navItem.find(".checks-progress_tracker .checks-progress_total").text(total);
+    function updateProgressBar(){
+        
+        // Bar width
+        $(".checks-progress_bar-fill").css("width", (grandCount * 100 / grandTotal) + "%");
+        // Bar count
+        $("#checksProgress .checks-progress_counter").text(grandCount);
+        $("#checksProgress .checks-progress_total").text(grandTotal);
+        let $barProgressTracker = $("#checksProgress .checks-progress_wrapper");
+        if (grandCount == grandTotal){
+            $barProgressTracker.addClass("completed");
+        }else{
+            $barProgressTracker.removeClass("completed");
+        }
+        // Reset grandCount after each update of the bar
+        grandCount = 0; 
 
+    }
+
+
+    // EVENTS //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    // On document load //////////////////////////////////
+        
+        // Populate left navigation with totals
+        let totalChildren = $('.totals-wrapper').children();
+        // Side nav totals
+        $.each( totalChildren, function( k, v ) {
+            let $v = $(v);
+            let id = $v.attr("ck-total");
+            let childTotal = $v.find(".w-dyn-item").length;
+            if (childTotal > 0){
+                $("[ck-nav-item='" + id + "']").find(".checks-progress_tracker .checks-progress_total").text(childTotal);
+            }     
+            grandTotal = grandTotal + childTotal;       
         });
 
-        // Populate page - if it has an avail list
+        // If URL has "checked" parameter -> save as localStorage
+        var urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.has("checked")){
+            let decodedURI = decodeURI(urlParams.get("checked"));
+            decodedURI = decodedURI.replace(/%3A/g,":");
+            decodedURI = decodedURI.replace(/%2C/g,",");
+            let paramJSON = JSON.parse(decodedURI);
+            if (paramJSON != null){
+                // set localstorage data, sourced from query param
+                updateLocalStorageData({}, paramJSON);
+            }
+        }
+
+        let initLocalData = getLocalStorageData();
+       
+        // Populate left navigation with checked item count
+        updateAllNavCounts(initLocalData);
+
+        // Populate Progress bar total
+        updateProgressBar();
+
+        // Populate page -> if it has an avail list
         if (getPageItems()){
             // Try to locate existing object
-            $.each( localJSON, function( pk, obj ) {
+            $.each( initLocalData, function( pk, obj ) {
                 if(pk == getPageParentID()){
                     
                     $.each( obj, function( ck, item ) {                        
@@ -132,24 +204,42 @@ $(document).ready(function() {
             });
         }
 
+
     // On check item click ///////////////////////////////
 
         // Update localstorage on checked box interactions
         $("[ck-item]").on("click", function(){
-
-            let ckSelector = $(this).attr("ck-item");
             
-            // IMPORTANT: Add delay because of other logic that checks the "checkbox" UI
+            // IMPORTANT: Add delay because of other external logic that checks the "checkbox" UI
             setTimeout(function(){
                 let availItems = updatePageItemsObject();
                 if( availItems ){
                     let localData = getLocalStorageData();
-                    if(!localData){
-                        localData = {};
-                    }
                     updateLocalStorageData(localData, availItems);
+                    updateAllNavCounts(localData);
+                    updateProgressBar();
                 }
             }, 100);
+        });
+
+    // On "share link" item click ///////////////////////////////
+
+        // Clipboard logic
+        const clipboard = new ClipboardJS("#share-link-btn", {
+            text: function () {
+                const url = new URL(window.location);
+                url.searchParams.set("checked", encodeURIComponent(JSON.stringify(getLocalStorageData())) );
+                return url.toString();
+            }
+        });
+        clipboard.on("success", function (e) {
+            $(e.trigger).addClass("copied");
+            setTimeout(function(){
+                $(e.trigger).removeClass("copied");
+            }, 2000);
+        });
+        clipboard.on("error", function (e) {
+            console.log(e);
         });
 
 });
